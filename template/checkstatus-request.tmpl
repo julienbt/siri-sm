@@ -1,0 +1,14 @@
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/">
+<soap:Body xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+	<ns1:CheckStatus xmlns:ns1="http://wsdl.siri.org.uk" xmlns:ns2="http://www.siri.org.uk/siri">
+		<Request>
+			<ns2:RequestTimestamp>{{.RequestTimestamp}}</ns2:RequestTimestamp>
+			<ns2:RequestorRef>{{.RequestorRef}}</ns2:RequestorRef>
+			<ns2:MessageIdentifier>{{.MessageIdentifier}}</ns2:MessageIdentifier>
+		</Request>
+		 <RequestExtension>
+			<!--You may enter ANY elements at this point-->
+		 </RequestExtension>
+	</ns1:CheckStatus>
+</soap:Body>
+</soapenv:Envelope>

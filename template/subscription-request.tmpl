@@ -1,0 +1,32 @@
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/">
+<soap:Body xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+	<ns1:Subscribe xmlns:ns1="http://wsdl.siri.org.uk" xmlns:ns2="http://www.siri.org.uk/siri">
+		<SubscriptionRequestInfo>
+			<ns2:RequestTimestamp>{{.RequestTimestamp}}</ns2:RequestTimestamp>
+			<ns2:RequestorRef>{{.SubscriberRef}}</ns2:RequestorRef>
+			<ns2:MessageIdentifier>{{.MessageIdentifier}}</ns2:MessageIdentifier>
+			<ns2:ConsumerAddress>{{.SubConsumerAddress}}</ns2:ConsumerAddress>
+		</SubscriptionRequestInfo>
+		<Request>
+			<ns2:EstimatedTimetableSubscriptionRequest>
+				<ns2:SubscriberRef>{{.SubscriberRef}}</ns2:SubscriberRef>
+				<ns2:SubscriptionIdentifier>{{.SubscriptionIdentifier}}</ns2:SubscriptionIdentifier>
+				<ns2:InitialTerminationTime>{{.InitialTerminationTime}}</ns2:InitialTerminationTime>
+				<ns2:EstimatedTimetableRequest version="2.0:FR-IDF-2.4">
+					<ns2:RequestTimestamp>{{.RequestTimestamp}}</ns2:RequestTimestamp>
+					<ns2:MessageIdentifier>{{.MessageIdentifier}}</ns2:MessageIdentifier>
+					<ns2:PreviewInterval>{{.PreviewInterval}}</ns2:PreviewInterval>
+					<ns2:OperatorRef>{{.OperatorRef}}</ns2:OperatorRef>
+					<ns2:Lines>{{range .Lines}}
+						<ns2:LineDirection>
+							<ns2:LineRef>{{.}}</ns2:LineRef>
+						</ns2:LineDirection>{{end}}
+					</ns2:Lines>
+				</ns2:EstimatedTimetableRequest>
+				<ns2:ChangeBeforeUpdates>{{.ChangeBeforeUpdates}}</ns2:ChangeBeforeUpdates>
+			</ns2:EstimatedTimetableSubscriptionRequest>
+		</Request>
+		<RequestExtension />
+	</ns1:Subscribe>
+</soap:Body>
+</soapenv:Envelope>
