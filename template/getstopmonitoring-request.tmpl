@@ -1,0 +1,19 @@
+<x:Envelope xmlns:x="http://schemas.xmlsoap.org/soap/envelope/" xmlns:wsd="http://wsdl.siri.org.uk" xmlns:siri="http://www.siri.org.uk/siri">
+	<x:Header/>
+	<x:Body>
+		<GetStopMonitoring xmlns="http://wsdl.siri.org.uk" xmlns:siri="http://www.siri.org.uk/siri">
+			<ServiceRequestInfo xmlns="">
+				<siri:RequestTimestamp>{{.RequestTimestamp}}</siri:RequestTimestamp>
+				<siri:RequestorRef>{{.RequestorRef}}</siri:RequestorRef>
+				<siri:MessageIdentifier>{{.MessageIdentifier}}</siri:MessageIdentifier>
+			</ServiceRequestInfo>
+			<Request xmlns="">
+				<siri:RequestTimestamp>{{.RequestTimestamp}}</siri:RequestTimestamp>
+				<siri:MessageIdentifier>{{.MessageIdentifier}}</siri:MessageIdentifier>
+				<siri:MonitoringRef>{{.MonitoringRef}}</siri:MonitoringRef>
+				<siri:MinimumStopVisitsPerLine>10</siri:MinimumStopVisitsPerLine>
+			</Request>
+			<RequestExtension xmlns=""/>
+		</GetStopMonitoring>
+	</x:Body>
+</x:Envelope>

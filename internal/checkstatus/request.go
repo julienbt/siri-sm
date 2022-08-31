@@ -28,9 +28,9 @@ type CheckStatusResult struct {
 }
 
 func CheckStatus(cfg config.Config, logger *logrus.Entry) (CheckStatusResult, error) {
-	var remoteErrorLoc = "checkStatus remote error"
+	var remoteErrorLoc = "CheckStatus remote error"
 	checkStatusRequest := populateCheckStatusRequest(&cfg)
-	req, err := generateSOAPCheckStatusRequest(checkStatusRequest)
+	req, err := generateSOAPCheckStatusHttpReq(checkStatusRequest)
 	if err != nil {
 		return CheckStatusResult{},
 			fmt.Errorf("error in building SOAP CheckStatus request: %s", err)
@@ -56,19 +56,6 @@ func CheckStatus(cfg config.Config, logger *logrus.Entry) (CheckStatusResult, er
 		return CheckStatusResult{},
 			&siri.RemoteError{Loc: remoteErrorLoc, Err: fmt.Errorf("unmarshallable response body: %s", err)}
 	}
-	// // Print prettier response
-	// {
-	// 	type Node struct {
-	// 		Attr     []xml.Attr
-	// 		XMLName  xml.Name
-	// 		Children []Node `xml:",any"`
-	// 		Text     string `xml:",chardata"`
-	// 	}
-	// 	node := Node{}
-	// 	_ = xml.Unmarshal(body, &node)
-	// 	buf, _ := xml.MarshalIndent(node, "", "    ")
-	// 	fmt.Println(string(buf))
-	// }
 	if !checkStatusResponse.CheckStatusResponseBody.CheckStatusResponse.CheckStatusResponseAnswer.Status {
 		return CheckStatusResult{},
 			&siri.RemoteError{Loc: remoteErrorLoc, Err: fmt.Errorf("status not true in response body")}
@@ -91,7 +78,7 @@ func populateCheckStatusRequest(cfg *config.Config) *CheckStatusRequest {
 	return &req
 }
 
-func generateSOAPCheckStatusRequest(req *CheckStatusRequest) (*http.Request, error) {
+func generateSOAPCheckStatusHttpReq(req *CheckStatusRequest) (*http.Request, error) {
 	tmpl, err := template.ParseFiles("./template/checkstatus-request.tmpl")
 	if err != nil {
 		return nil, fmt.Errorf("error parsing template: %s", err)
