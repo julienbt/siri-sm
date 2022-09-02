@@ -14,8 +14,8 @@ import (
 func main() {
 	logger := getLogger()
 
-	var cfg config.Config
-	err := envconfig.Process("", &cfg)
+	var cfg config.ConfigCheckStatus
+	err := envconfig.Process("SIRISM_CHECKSTATUS", &cfg)
 	if err != nil {
 		logger.Fatal(err)
 	}

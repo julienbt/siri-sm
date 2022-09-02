@@ -24,7 +24,7 @@ type GetStopMonitoringRequest struct {
 	MinimumStopVisitsPerLine int
 }
 
-func GetStopMonitoring(cfg config.Config, logger *logrus.Entry, monitoringRef string) ([]MonitoredStopVisit, error) {
+func GetStopMonitoring(cfg config.ConfigCheckStatus, logger *logrus.Entry, monitoringRef string) ([]MonitoredStopVisit, error) {
 	var remoteErrorLoc = "GetStopMonitoring remote error"
 	getStopMonitoringRequest := populateGetStopMonitoringRequest(&cfg, monitoringRef)
 	req, err := generateSOAPCheckStatusHttpReq(getStopMonitoringRequest)
@@ -93,16 +93,16 @@ func prettyPrintBody(body []byte) {
 	fmt.Println(string(buf))
 }
 
-func populateGetStopMonitoringRequest(cfg *config.Config, monitoringRef string) *GetStopMonitoringRequest {
+func populateGetStopMonitoringRequest(cfg *config.ConfigCheckStatus, monitoringRef string) *GetStopMonitoringRequest {
 	now := time.Now()
 	req := GetStopMonitoringRequest{}
 	req.RequestTimestamp = now.Format(time.RFC3339)
-	req.RequestorRef = cfg.SiriSm.SubscriberRef
+	req.RequestorRef = cfg.SubscriberRef
 	// req.MessageIdentifier = "KISIO2_ILEVIA:Message::11234:LOC"
 	req.MessageIdentifier = req.RequestorRef + ":ResponseMessage:" + now.Format("20060102_150405")
 	req.MonitoringRef = monitoringRef
 	req.MinimumStopVisitsPerLine = 2
-	req.SupplierAddress = cfg.SiriSm.SupplierAddress
+	req.SupplierAddress = cfg.SupplierAddress
 	return &req
 }
 
