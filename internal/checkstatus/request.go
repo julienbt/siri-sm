@@ -27,37 +27,43 @@ type CheckStatusResult struct {
 	LastSupplierCheckStatusOk  time.Time
 }
 
-func CheckStatus(cfg config.Config, logger *logrus.Entry) (CheckStatusResult, error) {
+func CheckStatus(cfg config.ConfigCheckStatus, logger *logrus.Entry) (CheckStatusResult, []byte, error) {
 	var remoteErrorLoc = "CheckStatus remote error"
 	checkStatusRequest := populateCheckStatusRequest(&cfg)
 	req, err := generateSOAPCheckStatusHttpReq(checkStatusRequest)
 	if err != nil {
 		return CheckStatusResult{},
+			nil,
 			fmt.Errorf("error in building SOAP CheckStatus request: %s", err)
 	}
 	resp, err := siri.SoapCall(req)
 	if err != nil {
 		return CheckStatusResult{},
+			nil,
 			&siri.RemoteError{Loc: remoteErrorLoc, Err: fmt.Errorf("call error: %s", err)}
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode < 200 || resp.StatusCode > 299 {
 		return CheckStatusResult{},
+			nil,
 			&siri.RemoteError{Loc: remoteErrorLoc, Err: fmt.Errorf("bad http-response status: %s", resp.Status)}
 	}
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return CheckStatusResult{},
+			nil,
 			&siri.RemoteError{Loc: remoteErrorLoc, Err: fmt.Errorf("unreadable response body: %s", err)}
 	}
 	checkStatusResponse := &CheckStatusResponseEnv{}
 	err = xml.Unmarshal(body, &checkStatusResponse)
 	if err != nil {
 		return CheckStatusResult{},
+			body,
 			&siri.RemoteError{Loc: remoteErrorLoc, Err: fmt.Errorf("unmarshallable response body: %s", err)}
 	}
 	if !checkStatusResponse.CheckStatusResponseBody.CheckStatusResponse.CheckStatusResponseAnswer.Status {
 		return CheckStatusResult{},
+			body,
 			&siri.RemoteError{Loc: remoteErrorLoc, Err: fmt.Errorf("status not true in response body")}
 	}
 	serviceStartedTime := checkStatusResponse.CheckStatusResponseBody.CheckStatusResponse.CheckStatusResponseAnswer.ServiceStartedTime.UTC()
@@ -65,16 +71,16 @@ func CheckStatus(cfg config.Config, logger *logrus.Entry) (CheckStatusResult, er
 		SupplierServiceStartedTime: serviceStartedTime,
 		LastSupplierCheckStatusOk:  time.Now(),
 	}
-	return result, nil
+	return result, body, nil
 }
 
-func populateCheckStatusRequest(cfg *config.Config) *CheckStatusRequest {
+func populateCheckStatusRequest(cfg *config.ConfigCheckStatus) *CheckStatusRequest {
 	now := time.Now()
 	req := CheckStatusRequest{}
 	req.RequestTimestamp = now.Format(time.RFC3339)
-	req.RequestorRef = cfg.SiriSm.SubscriberRef
+	req.RequestorRef = cfg.SubscriberRef
 	req.MessageIdentifier = req.RequestorRef + ":ResponseMessage:" + now.Format("20060102_150405")
-	req.SupplierAddress = cfg.SiriSm.SupplierAddress
+	req.SupplierAddress = cfg.SupplierAddress
 	return &req
 }
 

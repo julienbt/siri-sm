@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"runtime"
 
 	"github.com/kelseyhightower/envconfig"
@@ -9,6 +10,7 @@ import (
 	"github.com/julienbt/siri-sm/internal/checkstatus"
 	"github.com/julienbt/siri-sm/internal/config"
 	"github.com/julienbt/siri-sm/internal/siri"
+	"github.com/julienbt/siri-sm/internal/utils"
 )
 
 func main() {
@@ -20,7 +22,7 @@ func main() {
 		logger.Fatal(err)
 	}
 
-	checkStatusResult, err := checkstatus.CheckStatus(cfg, logger)
+	checkStatusResult, htmlBody, err := checkstatus.CheckStatus(cfg, logger)
 	if err != nil {
 		switch e := err.(type) {
 		case *siri.RemoteError:
@@ -31,6 +33,9 @@ func main() {
 		return
 	}
 	logger.Infof("CheckStatus response: %#v", checkStatusResult)
+	if htmlBody != nil {
+		fmt.Println(utils.GetPrettyPrintOfHtmlBody(htmlBody))
+	}
 }
 
 func getLogger() *logrus.Entry {

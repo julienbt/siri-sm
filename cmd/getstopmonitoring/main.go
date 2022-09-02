@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"runtime"
 
 	"github.com/kelseyhightower/envconfig"
@@ -9,6 +10,7 @@ import (
 	"github.com/julienbt/siri-sm/internal/config"
 	"github.com/julienbt/siri-sm/internal/getstopmonitoring"
 	"github.com/julienbt/siri-sm/internal/siri"
+	"github.com/julienbt/siri-sm/internal/utils"
 )
 
 const MONITORING_REF string = "ILEVIA:StopPoint:BP:CCH002:LOC"
@@ -22,7 +24,7 @@ func main() {
 		logger.Fatal(err)
 	}
 
-	monitoredStopVisits, err := getstopmonitoring.GetStopMonitoring(cfg, logger, MONITORING_REF)
+	monitoredStopVisits, htmlBody, err := getstopmonitoring.GetStopMonitoring(cfg, logger, MONITORING_REF)
 	if err != nil {
 		switch e := err.(type) {
 		case *siri.RemoteError:
@@ -33,6 +35,9 @@ func main() {
 		return
 	}
 	logger.Infof("GetStopMonitoring response: %#v", monitoredStopVisits)
+	if htmlBody != nil {
+		fmt.Println(utils.GetPrettyPrintOfHtmlBody(htmlBody))
+	}
 }
 
 func getLogger() *logrus.Entry {

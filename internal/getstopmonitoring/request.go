@@ -24,42 +24,51 @@ type GetStopMonitoringRequest struct {
 	MinimumStopVisitsPerLine int
 }
 
-func GetStopMonitoring(cfg config.ConfigCheckStatus, logger *logrus.Entry, monitoringRef string) ([]MonitoredStopVisit, error) {
+func GetStopMonitoring(
+	cfg config.ConfigCheckStatus,
+	logger *logrus.Entry,
+	monitoringRef string,
+) ([]MonitoredStopVisit, []byte, error) {
 	var remoteErrorLoc = "GetStopMonitoring remote error"
 	getStopMonitoringRequest := populateGetStopMonitoringRequest(&cfg, monitoringRef)
 	req, err := generateSOAPCheckStatusHttpReq(getStopMonitoringRequest)
 	if err != nil {
 		return nil,
+			nil,
 			fmt.Errorf("error in building SOAP GetStopMonitoring request: %s", err)
 	}
 	resp, err := siri.SoapCall(req)
 	if err != nil {
 		return nil,
+			nil,
 			&siri.RemoteError{Loc: remoteErrorLoc, Err: fmt.Errorf("call error: %s", err)}
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode < 200 || resp.StatusCode > 299 {
 		return nil,
+			nil,
 			&siri.RemoteError{Loc: remoteErrorLoc, Err: fmt.Errorf("bad http-response status: %s", resp.Status)}
 	}
 	body, err := ioutil.ReadAll(resp.Body)
-	prettyPrintBody(body)
 	if err != nil {
 		return nil,
+			body,
 			&siri.RemoteError{Loc: remoteErrorLoc, Err: fmt.Errorf("unreadable response body: %s", err)}
 	}
 	getStopMonitoringEnv := &GetStopMonitoringEnv{}
 	err = xml.Unmarshal(body, &getStopMonitoringEnv)
 	if err != nil {
 		return nil,
+			body,
 			&siri.RemoteError{Loc: remoteErrorLoc, Err: fmt.Errorf("unmarshallable response body: %s", err)}
 	}
 	monitoredStopVisits, err := checkAndExtractMonitoredStopVisit(getStopMonitoringEnv)
 	if err != nil {
 		return nil,
+			body,
 			&siri.RemoteError{Loc: remoteErrorLoc, Err: err}
 	}
-	return monitoredStopVisits, nil
+	return monitoredStopVisits, body, nil
 }
 
 func checkAndExtractMonitoredStopVisit(envelope *GetStopMonitoringEnv) ([]MonitoredStopVisit, error) {
@@ -77,20 +86,6 @@ func checkAndExtractMonitoredStopVisit(envelope *GetStopMonitoringEnv) ([]Monito
 		return nil, err
 	}
 	return stopMonitoringDelivery.MonitoredStopVisits, nil
-}
-
-func prettyPrintBody(body []byte) {
-	html := body
-	type node struct {
-		Attr     []xml.Attr
-		XMLName  xml.Name
-		Children []node `xml:",any"`
-		Text     string `xml:",chardata"`
-	}
-	x := node{}
-	_ = xml.Unmarshal([]byte(html), &x)
-	buf, _ := xml.MarshalIndent(x, "", "   ")
-	fmt.Println(string(buf))
 }
 
 func populateGetStopMonitoringRequest(cfg *config.ConfigCheckStatus, monitoringRef string) *GetStopMonitoringRequest {
