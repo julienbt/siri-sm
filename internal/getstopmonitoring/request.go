@@ -94,7 +94,7 @@ func populateGetStopMonitoringRequest(cfg *config.ConfigCheckStatus, monitoringR
 	req.RequestTimestamp = now.Format(time.RFC3339)
 	req.RequestorRef = cfg.SubscriberRef
 	// req.MessageIdentifier = "KISIO2_ILEVIA:Message::11234:LOC"
-	req.MessageIdentifier = req.RequestorRef + ":ResponseMessage:" + now.Format("20060102_150405")
+	req.MessageIdentifier = cfg.SubscriberRef + ":ResponseMessage:" + now.Format("20060102_150405")
 	req.MonitoringRef = monitoringRef
 	req.MinimumStopVisitsPerLine = 2
 	req.SupplierAddress = cfg.SupplierAddress

@@ -14,6 +14,65 @@ import (
 )
 
 var LOCATION_NAME = "Europ/Paris"
+var LOCATION, _ = time.LoadLocation(LOCATION_NAME)
+
+var INITIAL_TERMINATION_TIME time.Time
+var REQUEST_TIMESTAMP time.Time
+
+const SUBSCRIBER_REF string = "KISIO2"
+const STOP_VISIT_TYPES string = "departures"
+const MINIMUM_STOP_VISITS_PER_LINE int = 2
+const PREVIEW_INTERVAL_DURATION time.Duration = 2 * time.Hour
+const INCREMENTAL_UPDATES bool = true
+const CHANGE_BEFORE_UPDATES_DURATION time.Duration = 2 * time.Second
+
+const IDENTIFIER_TIME_LAYOUT string = "20060102_150405"
+
+var STOP_POINT_IDS = []string{
+	"CAS001",
+	"CAS002",
+	"CAT001",
+	"CAT002",
+	"CAU001",
+	"CAU002",
+	"CAV001",
+	"CAV002",
+	"CAW001",
+	"CAW002",
+	"CBA011",
+	"CBA012",
+	"CBE001",
+	"CBE002",
+	"CBF001",
+	"CBF002",
+	"CBG001",
+	"CBG002",
+	"CBO002",
+	"CBO004",
+	"CCD001",
+	"CCD002",
+	"CCE001",
+	"CCE002",
+	"CCH001",
+	"CCH002",
+	"CDE001",
+	"CDE002",
+	"CDO001",
+	"CDO002",
+	"CDP001",
+	"CDP002",
+	"CDT001",
+	"CDT002",
+	"CED001",
+	"CED002",
+	"CED002",
+	"CEH001",
+	"CEN001",
+	"CEN001",
+	"CEO001",
+	"CEO002",
+	"CER001",
+}
 
 func Subscribe(cfg config.ConfigSubscribe, logger *logrus.Entry, location *time.Location) (SubscribeRequestInfoResult, string, []byte, error) {
 	var remoteErrorLoc = "Subscribe remote error"
@@ -61,11 +120,7 @@ func (req *SubscribeRequestInfo) populate(
 	req.RequestTimestamp = *requestTimestamp
 	req.SubscriberRef = cfg.SubscriberRef
 	req.ConsumerAddress = cfg.ConsumerAddress
-	req.SubscribeRequests = make([]SubscribeRequest, 0)
-	{
-		req.SubscribeRequests = append(req.SubscribeRequests, SubscribeRequest{})
-		req.SubscribeRequests[0].populate(cfg, requestTimestamp, initialTerminationTime)
-	}
+	req.SubscribeRequests = initSubscribeRequests(cfg, requestTimestamp, initialTerminationTime)
 	return nil
 }
 
@@ -99,31 +154,36 @@ type SubscribeRequest struct {
 	InitialTerminationTime   time.Time
 	RequestTimestamp         time.Time
 	MessageIdentifier        string
-	PreviewInterval          Duration
+	PreviewInterval          string
 	MonitoringRef            string
 	StopVisitTypes           string
 	MinimumStopVisitsPerLine int
 	IncrementalUpdates       bool
-	ChangeBeforeUpdates      Duration
+	ChangeBeforeUpdates      string
 }
 
-func (req *SubscribeRequest) populate(
+func initSubscribeRequests(
 	cfg *config.ConfigSubscribe,
 	requestTimestamp *time.Time,
 	initialTerminationTime *time.Time,
-) error {
-	req.SubscriberRef = cfg.SubscriberRef
-	req.SubscriptionIdentifier = "TODO SubscriptionIdentifier"
-	req.InitialTerminationTime = *initialTerminationTime
-	req.RequestTimestamp = *requestTimestamp
-	req.MessageIdentifier = "TODO MessageIdentifier"
-	req.PreviewInterval = Duration(2 * time.Hour)
-	req.MonitoringRef = "TODO MonitoringRef"
-	req.StopVisitTypes = "departures"
-	req.MinimumStopVisitsPerLine = 2
-	req.IncrementalUpdates = true
-	req.ChangeBeforeUpdates = Duration(30 * time.Second)
-	return nil
+) []SubscribeRequest {
+	numberOfSubascibeRequests := len(STOP_POINT_IDS)
+	requests := make([]SubscribeRequest, 0, numberOfSubascibeRequests)
+	for _, stop_point_id := range STOP_POINT_IDS {
+		req := SubscribeRequest{}
+		req.SubscriberRef = cfg.SubscriberRef
+		req.SubscriptionIdentifier = cfg.SubscriberRef + ":Subscription"
+		req.InitialTerminationTime = requestTimestamp.AddDate(0, 0, 1)
+		req.PreviewInterval = "PT24H0M0.000S"
+		req.RequestTimestamp = *requestTimestamp
+		req.MessageIdentifier = cfg.SubscriberRef + ":Message:" + requestTimestamp.Format(IDENTIFIER_TIME_LAYOUT)
+		req.MonitoringRef = cfg.ProducerRef + ":StopPoint:BP:" + stop_point_id + ":LOC"
+		req.MinimumStopVisitsPerLine = MINIMUM_STOP_VISITS_PER_LINE
+		req.IncrementalUpdates = INCREMENTAL_UPDATES
+		req.ChangeBeforeUpdates = "PT1M"
+		requests = append(requests, req)
+	}
+	return requests
 }
 
 type Duration time.Duration

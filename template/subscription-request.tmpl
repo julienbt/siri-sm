@@ -11,14 +11,14 @@
 		<ns2:Request>
 		{{range $a := .SubscribeRequests}}
 			<ns2:StopMonitoringSubscriptionRequest>
-				<ns2:SubscriberRef>{{$a.SubscriberRef}}</ns2:SubscriberRef>
+				<ns2:SubscriberRef>{{$.SubscriberRef}}</ns2:SubscriberRef>
 				<ns2:SubscriptionIdentifier>{{$a.SubscriptionIdentifier}}</ns2:SubscriptionIdentifier>
 				<ns2:InitialTerminationTime>{{$a.InitialTerminationTime.Format "2006-01-02T15:04:05Z07:00" }}</ns2:InitialTerminationTime>
 				<ns2:StopMonitoringRequest version="2.0:FR-IDF-2.4">
 					<ns2:RequestTimestamp>{{$a.RequestTimestamp.Format "2006-01-02T15:04:05Z07:00" }}</ns2:RequestTimestamp>
 					<ns2:MessageIdentifier>{{$a.MessageIdentifier}}</ns2:MessageIdentifier>
 					<ns2:PreviewInterval>{{$a.PreviewInterval}}</ns2:PreviewInterval>
-					<ns2:MonitoringRef>{{$a.MonitoringRef}}</ns2:MonitoringRef>
+					<ns2:MonitoringRef>ILEVIA:StopPoint:BP:11N001:LOC</ns2:MonitoringRef>
 					<ns2:StopVisitTypes>{{$a.StopVisitTypes}}</ns2:StopVisitTypes>
 					<ns2:MinimumStopVisitsPerLine>{{$a.MinimumStopVisitsPerLine}}</ns2:MinimumStopVisitsPerLine>
 				</ns2:StopMonitoringRequest>
