@@ -1,32 +1,33 @@
 <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/">
 <soap:Body xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
-	<ns1:Subscribe xmlns:ns1="http://wsdl.siri.org.uk" xmlns:ns2="http://www.siri.org.uk/siri">
+	<ns1:Subscribe xmlns:ns1="http://wsdl.siri.org.uk" xmlns="http://www.siri.org.uk/siri">
 		<SubscriptionRequestInfo>
 			<ns2:RequestTimestamp>{{.RequestTimestamp}}</ns2:RequestTimestamp>
+			<ns2:Address>{{.ConsumerAddress}}</Address>
 			<ns2:RequestorRef>{{.SubscriberRef}}</ns2:RequestorRef>
 			<ns2:MessageIdentifier>SUBREQ</ns2:MessageIdentifier>
-			<ns2:ConsumerAddress>{{.SubConsumerAddress}}</ns2:ConsumerAddress>
+			<ns2:ConsumerAddress>{{.ConsumerAddress}}</ns2:ConsumerAddress>
 		</SubscriptionRequestInfo>
-		<Request>
-			<ns2:EstimatedTimetableSubscriptionRequest>
-				<ns2:SubscriberRef>{{.SubscriberRef}}</ns2:SubscriberRef>
-				<ns2:SubscriptionIdentifier>{{.SubscriptionIdentifier}}</ns2:SubscriptionIdentifier>
-				<ns2:InitialTerminationTime>{{.InitialTerminationTime}}</ns2:InitialTerminationTime>
-				<ns2:EstimatedTimetableRequest version="2.0:FR-IDF-2.4">
-					<ns2:RequestTimestamp>{{.RequestTimestamp}}</ns2:RequestTimestamp>
-					<ns2:MessageIdentifier>{{.MessageIdentifier}}</ns2:MessageIdentifier>
-					<ns2:PreviewInterval>{{.PreviewInterval}}</ns2:PreviewInterval>
-					<ns2:OperatorRef>{{.OperatorRef}}</ns2:OperatorRef>
-					<ns2:Lines>{{range .Lines}}
-						<ns2:LineDirection>
-							<ns2:LineRef>{{.}}</ns2:LineRef>
-						</ns2:LineDirection>{{end}}
-					</ns2:Lines>
-				</ns2:EstimatedTimetableRequest>
-				<ns2:ChangeBeforeUpdates>{{.ChangeBeforeUpdates}}</ns2:ChangeBeforeUpdates>
-			</ns2:EstimatedTimetableSubscriptionRequest>
-		</Request>
-		<RequestExtension />
+		<ns2:Request>
+		{{range $a := .SubscribeRequests}}
+			<ns2:StopMonitoringSubscriptionRequest>
+				<ns2:SubscriberRef>{{$a.SubscriberRef}}</ns2:SubscriberRef>
+				<ns2:SubscriptionIdentifier>{{$a.SubscriptionIdentifier}}</ns2:SubscriptionIdentifier>
+				<ns2:InitialTerminationTime>{{$a.InitialTerminationTime.Format "2006-01-02T15:04:05Z07:00" }}</ns2:InitialTerminationTime>
+				<ns2:StopMonitoringRequest version="2.0:FR-IDF-2.4">
+					<ns2:RequestTimestamp>{{$a.RequestTimestamp.Format "2006-01-02T15:04:05Z07:00" }}</ns2:RequestTimestamp>
+					<ns2:MessageIdentifier>{{$a.MessageIdentifier}}</ns2:MessageIdentifier>
+					<ns2:PreviewInterval>{{$a.PreviewInterval}}</ns2:PreviewInterval>
+					<ns2:MonitoringRef>{{$a.MonitoringRef}}</ns2:MonitoringRef>
+					<ns2:StopVisitTypes>{{$a.StopVisitTypes}}</ns2:StopVisitTypes>
+					<ns2:MinimumStopVisitsPerLine>{{$a.MinimumStopVisitsPerLine}}</ns2:MinimumStopVisitsPerLine>
+				</ns2:StopMonitoringRequest>
+				<ns2:IncrementalUpdates>{{$a.IncrementalUpdates}}</ns2:IncrementalUpdates>
+				<ns2:ChangeBeforeUpdates>{{$a.ChangeBeforeUpdates}}</ns2:ChangeBeforeUpdates>
+			</ns2:StopMonitoringSubscriptionRequest>
+		{{end}}
+		</ns2:Request>
+		<ns2:RequestExtension />
 	</ns1:Subscribe>
 </soap:Body>
 </soapenv:Envelope>

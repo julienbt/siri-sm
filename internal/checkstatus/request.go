@@ -29,14 +29,14 @@ type CheckStatusResult struct {
 
 func CheckStatus(cfg config.ConfigCheckStatus, logger *logrus.Entry) (CheckStatusResult, []byte, error) {
 	var remoteErrorLoc = "CheckStatus remote error"
-	checkStatusRequest := populateCheckStatusRequest(&cfg)
-	req, err := generateSOAPCheckStatusHttpReq(checkStatusRequest)
+	req := populateCheckStatusRequest(&cfg)
+	httpReq, err := generateHttpSoapCheckStatusReq(req)
 	if err != nil {
 		return CheckStatusResult{},
 			nil,
 			fmt.Errorf("error in building SOAP CheckStatus request: %s", err)
 	}
-	resp, err := siri.SoapCall(req)
+	resp, err := siri.SoapCall(httpReq)
 	if err != nil {
 		return CheckStatusResult{},
 			nil,
@@ -84,7 +84,7 @@ func populateCheckStatusRequest(cfg *config.ConfigCheckStatus) *CheckStatusReque
 	return &req
 }
 
-func generateSOAPCheckStatusHttpReq(req *CheckStatusRequest) (*http.Request, error) {
+func generateHttpSoapCheckStatusReq(req *CheckStatusRequest) (*http.Request, error) {
 	tmpl, err := template.ParseFiles("./template/checkstatus-request.tmpl")
 	if err != nil {
 		return nil, fmt.Errorf("error parsing template: %s", err)
