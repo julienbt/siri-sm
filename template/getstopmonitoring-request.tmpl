@@ -3,12 +3,12 @@
 	<x:Body>
 		<GetStopMonitoring xmlns="http://wsdl.siri.org.uk" xmlns:siri="http://www.siri.org.uk/siri">
 			<ServiceRequestInfo xmlns="">
-				<siri:RequestTimestamp>{{.RequestTimestamp}}</siri:RequestTimestamp>
+				<siri:RequestTimestamp>{{.RequestTimestamp.Format "2006-01-02T15:04:05Z07:00"}}</siri:RequestTimestamp>
 				<siri:RequestorRef>{{.RequestorRef}}</siri:RequestorRef>
 				<siri:MessageIdentifier>{{.MessageIdentifier}}</siri:MessageIdentifier>
 			</ServiceRequestInfo>
 			<Request xmlns="">
-				<siri:RequestTimestamp>{{.RequestTimestamp}}</siri:RequestTimestamp>
+				<siri:RequestTimestamp>{{.RequestTimestamp.Format "2006-01-02T15:04:05Z07:00"}}</siri:RequestTimestamp>
 				<siri:MessageIdentifier>{{.MessageIdentifier}}</siri:MessageIdentifier>
 				<siri:MonitoringRef>{{.MonitoringRef}}</siri:MonitoringRef>
 				<siri:MinimumStopVisitsPerLine>{{.MinimumStopVisitsPerLine}}</siri:MinimumStopVisitsPerLine>

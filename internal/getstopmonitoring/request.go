@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"strings"
 	"text/template"
 	"time"
@@ -15,9 +16,13 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+const IDENTIFIER_TIME_LAYOUT string = "20060102_150405"
+
+const MINIMUM_STOP_VISITS_PER_LINE int = 2
+
 type GetStopMonitoringRequest struct {
-	SupplierAddress          string
-	RequestTimestamp         string
+	SupplierAddress          url.URL
+	RequestTimestamp         time.Time
 	RequestorRef             string
 	MessageIdentifier        string
 	MonitoringRef            string
@@ -27,48 +32,63 @@ type GetStopMonitoringRequest struct {
 func GetStopMonitoring(
 	cfg config.ConfigCheckStatus,
 	logger *logrus.Entry,
+	requestTimestamp *time.Time,
 	monitoringRef string,
-) ([]MonitoredStopVisit, []byte, error) {
+) ([]MonitoredStopVisit, string, []byte, error) {
 	var remoteErrorLoc = "GetStopMonitoring remote error"
-	getStopMonitoringRequest := populateGetStopMonitoringRequest(&cfg, monitoringRef)
-	req, err := generateSOAPCheckStatusHttpReq(getStopMonitoringRequest)
+
+	getStopMonitoringRequest := GetStopMonitoringRequest{}
+	getStopMonitoringRequest.populate(&cfg, requestTimestamp, monitoringRef)
+	httpReq, htmlReqBody, err := getStopMonitoringRequest.generateHttpSoapReq()
 	if err != nil {
 		return nil,
+			"",
 			nil,
 			fmt.Errorf("error in building SOAP GetStopMonitoring request: %s", err)
 	}
-	resp, err := siri.SoapCall(req)
+	// Send HTTP request and receive the response
+	resp, err := siri.SoapCall(httpReq)
 	if err != nil {
 		return nil,
+			htmlReqBody,
 			nil,
 			&siri.RemoteError{Loc: remoteErrorLoc, Err: fmt.Errorf("call error: %s", err)}
 	}
+
+	// Get the HTTP response body
 	defer resp.Body.Close()
-	if resp.StatusCode < 200 || resp.StatusCode > 299 {
-		return nil,
-			nil,
-			&siri.RemoteError{Loc: remoteErrorLoc, Err: fmt.Errorf("bad http-response status: %s", resp.Status)}
-	}
-	body, err := ioutil.ReadAll(resp.Body)
+	htmlRespBody, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return nil,
-			body,
+			htmlReqBody,
+			htmlRespBody,
 			&siri.RemoteError{Loc: remoteErrorLoc, Err: fmt.Errorf("unreadable response body: %s", err)}
 	}
+
+	// Check HTTP status code
+	if resp.StatusCode < 200 || resp.StatusCode > 299 {
+		return nil,
+			htmlReqBody,
+			htmlRespBody,
+			&siri.RemoteError{Loc: remoteErrorLoc, Err: fmt.Errorf("bad http-response status: %s", resp.Status)}
+	}
+
 	getStopMonitoringEnv := &GetStopMonitoringEnv{}
-	err = xml.Unmarshal(body, &getStopMonitoringEnv)
+	err = xml.Unmarshal(htmlRespBody, &getStopMonitoringEnv)
 	if err != nil {
 		return nil,
-			body,
+			htmlReqBody,
+			htmlRespBody,
 			&siri.RemoteError{Loc: remoteErrorLoc, Err: fmt.Errorf("unmarshallable response body: %s", err)}
 	}
 	monitoredStopVisits, err := checkAndExtractMonitoredStopVisit(getStopMonitoringEnv)
 	if err != nil {
 		return nil,
-			body,
+			htmlReqBody,
+			htmlRespBody,
 			&siri.RemoteError{Loc: remoteErrorLoc, Err: err}
 	}
-	return monitoredStopVisits, body, nil
+	return monitoredStopVisits, htmlReqBody, htmlRespBody, nil
 }
 
 func checkAndExtractMonitoredStopVisit(envelope *GetStopMonitoringEnv) ([]MonitoredStopVisit, error) {
@@ -88,37 +108,43 @@ func checkAndExtractMonitoredStopVisit(envelope *GetStopMonitoringEnv) ([]Monito
 	return stopMonitoringDelivery.MonitoredStopVisits, nil
 }
 
-func populateGetStopMonitoringRequest(cfg *config.ConfigCheckStatus, monitoringRef string) *GetStopMonitoringRequest {
-	now := time.Now()
-	req := GetStopMonitoringRequest{}
-	req.RequestTimestamp = now.Format(time.RFC3339)
+func (req *GetStopMonitoringRequest) populate(
+	cfg *config.ConfigCheckStatus,
+	requestTimestamp *time.Time,
+	monitoringRef string,
+) error {
+	supplierAddressUrl, err := url.Parse(cfg.SupplierAddress)
+	if err != nil {
+		return fmt.Errorf("error the supplier address is not a valid URL: %s", cfg.SupplierAddress)
+	}
+	req.RequestTimestamp = *requestTimestamp
 	req.RequestorRef = cfg.SubscriberRef
-	// req.MessageIdentifier = "KISIO2_ILEVIA:Message::11234:LOC"
-	req.MessageIdentifier = cfg.SubscriberRef + ":ResponseMessage:" + now.Format("20060102_150405")
+	req.MessageIdentifier = cfg.SubscriberRef + ":ResponseMessage:" + requestTimestamp.Format(IDENTIFIER_TIME_LAYOUT)
 	req.MonitoringRef = monitoringRef
-	req.MinimumStopVisitsPerLine = 2
-	req.SupplierAddress = cfg.SupplierAddress
-	return &req
+	req.MinimumStopVisitsPerLine = MINIMUM_STOP_VISITS_PER_LINE
+	req.SupplierAddress = *supplierAddressUrl
+	return nil
 }
 
-func generateSOAPCheckStatusHttpReq(req *GetStopMonitoringRequest) (*http.Request, error) {
+func (req *GetStopMonitoringRequest) generateHttpSoapReq() (*http.Request, string, error) {
 	tmpl, err := template.ParseFiles("./template/getstopmonitoring-request.tmpl")
 	if err != nil {
-		return nil, fmt.Errorf("error parsing template: %s", err)
+		return nil, "", fmt.Errorf("error parsing template: %s", err)
 	}
-	doc := &bytes.Buffer{}
-	err = tmpl.Execute(doc, req)
+	htmlReqBodyBuffer := &bytes.Buffer{}
+	err = tmpl.Execute(htmlReqBodyBuffer, req)
 	if err != nil {
-		return nil, fmt.Errorf("error building template: %s", err)
+		return nil, "", fmt.Errorf("error building template: %s", err)
 	}
-	httpReq, err := http.NewRequest(http.MethodPost, req.SupplierAddress, strings.NewReader(doc.String()))
+	htmlReqBody := htmlReqBodyBuffer.String()
+	httpReq, err := http.NewRequest(http.MethodPost, req.SupplierAddress.String(), strings.NewReader(htmlReqBody))
 	headers := http.Header{
 		"Content-Type": []string{"text/xml; charset=utf-8"},
 		"SOAPAction":   []string{"GetStopMonitoring"},
 	}
 	httpReq.Header = headers // better than .Header.Set to preserve case (for "SOAPAction")
 	if err != nil {
-		return nil, fmt.Errorf("error building http-request: %s", err)
+		return nil, "", fmt.Errorf("error building http-request: %s", err)
 	}
-	return httpReq, nil
+	return httpReq, htmlReqBody, nil
 }

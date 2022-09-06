@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"runtime"
+	"time"
 
 	"github.com/kelseyhightower/envconfig"
 	"github.com/sirupsen/logrus"
@@ -13,7 +14,9 @@ import (
 	"github.com/julienbt/siri-sm/internal/utils"
 )
 
-const MONITORING_REF string = "ILEVIA:StopPoint:BP:CCH002:LOC"
+var LOCATION_NAME = "Europe/Paris"
+
+const MONITORING_REF string = "ILEVIA:StopPoint:BP:CAS001:LOC"
 
 func main() {
 	logger := getLogger()
@@ -24,7 +27,23 @@ func main() {
 		logger.Fatal(err)
 	}
 
-	monitoredStopVisits, htmlBody, err := getstopmonitoring.GetStopMonitoring(cfg, logger, MONITORING_REF)
+	location, err := time.LoadLocation(LOCATION_NAME)
+	if err != nil {
+		logger.Fatal(err)
+	}
+	requestTimestamp := time.Now().In(location)
+	monitoredStopVisits, htmlReqBody, htmlRespBody, err := getstopmonitoring.GetStopMonitoring(
+		cfg,
+		logger,
+		&requestTimestamp,
+		MONITORING_REF,
+	)
+	if len(htmlReqBody) > 0 {
+		fmt.Println(htmlReqBody)
+	}
+	if htmlRespBody != nil {
+		fmt.Println(utils.GetPrettyPrintOfHtmlBody(htmlRespBody))
+	}
 	if err != nil {
 		switch e := err.(type) {
 		case *siri.RemoteError:
@@ -35,9 +54,6 @@ func main() {
 		return
 	}
 	logger.Infof("GetStopMonitoring response: %#v", monitoredStopVisits)
-	if htmlBody != nil {
-		fmt.Println(utils.GetPrettyPrintOfHtmlBody(htmlBody))
-	}
 }
 
 func getLogger() *logrus.Entry {
