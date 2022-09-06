@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"strings"
 	"text/template"
 	"time"
@@ -15,9 +16,11 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+const IDENTIFIER_TIME_LAYOUT string = "20060102_150405"
+
 type CheckStatusRequest struct {
-	SupplierAddress   string
-	RequestTimestamp  string
+	SupplierAddress   url.URL
+	RequestTimestamp  time.Time
 	RequestorRef      string
 	MessageIdentifier string
 }
@@ -27,43 +30,68 @@ type CheckStatusResult struct {
 	LastSupplierCheckStatusOk  time.Time
 }
 
-func CheckStatus(cfg config.ConfigCheckStatus, logger *logrus.Entry) (CheckStatusResult, []byte, error) {
+func CheckStatus(
+	cfg config.ConfigCheckStatus,
+	logger *logrus.Entry,
+	requestTimestamp *time.Time,
+) (CheckStatusResult, string, []byte, error) {
 	var remoteErrorLoc = "CheckStatus remote error"
-	req := populateCheckStatusRequest(&cfg)
-	httpReq, err := generateHttpSoapCheckStatusReq(req)
+	req := CheckStatusRequest{}
+	err := req.populate(&cfg, requestTimestamp)
 	if err != nil {
 		return CheckStatusResult{},
+			"",
+			nil,
+			fmt.Errorf("error CheckStatus request initialization: %v", err)
+	}
+	httpReq, htmlReqBody, err := generateHttpSoapReq(&req)
+	if err != nil {
+		return CheckStatusResult{},
+			"",
 			nil,
 			fmt.Errorf("error in building SOAP CheckStatus request: %s", err)
 	}
+
+	// Send HTTP request and receive the response
 	resp, err := siri.SoapCall(httpReq)
 	if err != nil {
 		return CheckStatusResult{},
+			htmlReqBody,
 			nil,
 			&siri.RemoteError{Loc: remoteErrorLoc, Err: fmt.Errorf("call error: %s", err)}
 	}
+
+	// Get the HTTP response body
 	defer resp.Body.Close()
-	if resp.StatusCode < 200 || resp.StatusCode > 299 {
-		return CheckStatusResult{},
-			nil,
-			&siri.RemoteError{Loc: remoteErrorLoc, Err: fmt.Errorf("bad http-response status: %s", resp.Status)}
-	}
-	body, err := ioutil.ReadAll(resp.Body)
+	htmlRespBody, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return CheckStatusResult{},
+			htmlReqBody,
 			nil,
 			&siri.RemoteError{Loc: remoteErrorLoc, Err: fmt.Errorf("unreadable response body: %s", err)}
 	}
+
+	// Check HTTP status code
+	if resp.StatusCode < 200 || resp.StatusCode > 299 {
+		return CheckStatusResult{},
+			htmlReqBody,
+			htmlRespBody,
+			&siri.RemoteError{Loc: remoteErrorLoc, Err: fmt.Errorf("bad http-response status: %s", resp.Status)}
+	}
+
+	// Parse the succesfull HTTP Response
 	checkStatusResponse := &CheckStatusResponseEnv{}
-	err = xml.Unmarshal(body, &checkStatusResponse)
+	err = xml.Unmarshal(htmlRespBody, &checkStatusResponse)
 	if err != nil {
 		return CheckStatusResult{},
-			body,
+			htmlReqBody,
+			htmlRespBody,
 			&siri.RemoteError{Loc: remoteErrorLoc, Err: fmt.Errorf("unmarshallable response body: %s", err)}
 	}
 	if !checkStatusResponse.CheckStatusResponseBody.CheckStatusResponse.CheckStatusResponseAnswer.Status {
 		return CheckStatusResult{},
-			body,
+			htmlReqBody,
+			htmlRespBody,
 			&siri.RemoteError{Loc: remoteErrorLoc, Err: fmt.Errorf("status not true in response body")}
 	}
 	serviceStartedTime := checkStatusResponse.CheckStatusResponseBody.CheckStatusResponse.CheckStatusResponseAnswer.ServiceStartedTime.UTC()
@@ -71,37 +99,40 @@ func CheckStatus(cfg config.ConfigCheckStatus, logger *logrus.Entry) (CheckStatu
 		SupplierServiceStartedTime: serviceStartedTime,
 		LastSupplierCheckStatusOk:  time.Now(),
 	}
-	return result, body, nil
+	return result, htmlReqBody, htmlRespBody, nil
 }
 
-func populateCheckStatusRequest(cfg *config.ConfigCheckStatus) *CheckStatusRequest {
-	now := time.Now()
-	req := CheckStatusRequest{}
-	req.RequestTimestamp = now.Format(time.RFC3339)
+func (req *CheckStatusRequest) populate(cfg *config.ConfigCheckStatus, requestTimestamp *time.Time) error {
+	supplierAddressUrl, err := url.Parse(cfg.SupplierAddress)
+	if err != nil {
+		return fmt.Errorf("error the supplier address is not a valid URL: %s", cfg.SupplierAddress)
+	}
+	req.RequestTimestamp = *requestTimestamp
 	req.RequestorRef = cfg.SubscriberRef
-	req.MessageIdentifier = req.RequestorRef + ":ResponseMessage:" + now.Format("20060102_150405")
-	req.SupplierAddress = cfg.SupplierAddress
-	return &req
+	req.MessageIdentifier = req.RequestorRef + ":ResponseMessage:" + requestTimestamp.Format(IDENTIFIER_TIME_LAYOUT)
+	req.SupplierAddress = *supplierAddressUrl
+	return nil
 }
 
-func generateHttpSoapCheckStatusReq(req *CheckStatusRequest) (*http.Request, error) {
+func generateHttpSoapReq(req *CheckStatusRequest) (*http.Request, string, error) {
 	tmpl, err := template.ParseFiles("./template/checkstatus-request.tmpl")
 	if err != nil {
-		return nil, fmt.Errorf("error parsing template: %s", err)
+		return nil, "", fmt.Errorf("error parsing template: %s", err)
 	}
-	doc := &bytes.Buffer{}
-	err = tmpl.Execute(doc, req)
+	htmlReqBodyBuffer := &bytes.Buffer{}
+	err = tmpl.Execute(htmlReqBodyBuffer, req)
 	if err != nil {
-		return nil, fmt.Errorf("error building template: %s", err)
+		return nil, "", fmt.Errorf("error building template: %s", err)
 	}
-	httpReq, err := http.NewRequest(http.MethodPost, req.SupplierAddress, strings.NewReader(doc.String()))
+	htmlReqBody := htmlReqBodyBuffer.String()
+	httpReq, err := http.NewRequest(http.MethodPost, req.SupplierAddress.String(), strings.NewReader(htmlReqBody))
 	headers := http.Header{
 		"Content-Type": []string{"text/xml; charset=utf-8"},
 		"SOAPAction":   []string{"CheckStatus"},
 	}
 	httpReq.Header = headers // better than .Header.Set to preserve case (for "SOAPAction")
 	if err != nil {
-		return nil, fmt.Errorf("error building http-request: %s", err)
+		return nil, "", fmt.Errorf("error building http-request: %s", err)
 	}
-	return httpReq, nil
+	return httpReq, htmlReqBody, nil
 }

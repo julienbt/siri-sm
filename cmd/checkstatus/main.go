@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"runtime"
+	"time"
 
 	"github.com/kelseyhightower/envconfig"
 	"github.com/sirupsen/logrus"
@@ -13,6 +14,8 @@ import (
 	"github.com/julienbt/siri-sm/internal/utils"
 )
 
+var LOCATION_NAME = "Europe/Paris"
+
 func main() {
 	logger := getLogger()
 
@@ -22,7 +25,19 @@ func main() {
 		logger.Fatal(err)
 	}
 
-	checkStatusResult, htmlBody, err := checkstatus.CheckStatus(cfg, logger)
+	location, err := time.LoadLocation(LOCATION_NAME)
+	if err != nil {
+		logger.Fatal(err)
+	}
+	requestTimestamp := time.Now().In(location)
+
+	checkStatusResult, htmlReqBody, htmlRespBody, err := checkstatus.CheckStatus(cfg, logger, &requestTimestamp)
+	if len(htmlReqBody) > 0 {
+		fmt.Println(htmlReqBody)
+	}
+	if htmlRespBody != nil {
+		fmt.Println(utils.GetPrettyPrintOfHtmlBody(htmlRespBody))
+	}
 	if err != nil {
 		switch e := err.(type) {
 		case *siri.RemoteError:
@@ -33,9 +48,6 @@ func main() {
 		return
 	}
 	logger.Infof("CheckStatus response: %#v", checkStatusResult)
-	if htmlBody != nil {
-		fmt.Println(utils.GetPrettyPrintOfHtmlBody(htmlBody))
-	}
 }
 
 func getLogger() *logrus.Entry {
