@@ -7,6 +7,7 @@ import (
 
 	"github.com/julienbt/siri-sm/internal/config"
 	"github.com/julienbt/siri-sm/internal/subscribe"
+	"github.com/julienbt/siri-sm/internal/utils"
 	"github.com/kelseyhightower/envconfig"
 	"github.com/sirupsen/logrus"
 )
@@ -27,15 +28,19 @@ func main() {
 	if err != nil {
 		logger.Fatal(err)
 	}
+	requestTimestamp := time.Now().In(location)
 
-	subscribeResp, httpReqBody, httpRespBody, err := subscribe.Subscribe(cfg, logger, location)
-	fmt.Println(httpReqBody)
+	subscribeResp, htmlReqBody, htmlRespBody, err := subscribe.Subscribe(cfg, logger, &requestTimestamp)
+	if len(htmlReqBody) > 0 {
+		fmt.Println(htmlReqBody)
+	}
+	if htmlRespBody != nil {
+		fmt.Println(utils.GetPrettyPrintOfHtmlBody(htmlRespBody))
+	}
 	if err != nil {
 		logger.Fatal(err)
 	}
-	_ = subscribeResp
-	_ = httpRespBody
-
+	logger.Infof("Subscribe response: %#v", subscribeResp)
 }
 
 func getLogger() *logrus.Entry {

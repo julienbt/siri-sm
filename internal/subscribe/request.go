@@ -3,6 +3,7 @@ package subscribe
 import (
 	"bytes"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strings"
@@ -10,6 +11,7 @@ import (
 	"time"
 
 	"github.com/julienbt/siri-sm/internal/config"
+	"github.com/julienbt/siri-sm/internal/siri"
 	"github.com/sirupsen/logrus"
 )
 
@@ -74,16 +76,18 @@ var STOP_POINT_IDS = []string{
 	"CER001",
 }
 
-func Subscribe(cfg config.ConfigSubscribe, logger *logrus.Entry, location *time.Location) (SubscribeRequestInfoResult, string, []byte, error) {
+func Subscribe(cfg config.ConfigSubscribe, logger *logrus.Entry, requestTimestamp *time.Time) (SubscribeRequestInfoResult, string, []byte, error) {
 	var remoteErrorLoc = "Subscribe remote error"
-
 	req := SubscribeRequestInfo{}
-	{
-		requestTimestamp := time.Now().In(location)
-		req.populate(&cfg, &requestTimestamp, &requestTimestamp)
+	err := req.populate(&cfg, requestTimestamp, requestTimestamp)
+	if err != nil {
+		return SubscribeRequestInfoResult{},
+			"",
+			nil,
+			fmt.Errorf("error Subscibe request initialization: %v", err)
 	}
 
-	httpReq, httpReqBody, err := req.generateHttpSoapSubscribeReq()
+	httpReq, htmlReqBody, err := req.generateHttpSoapReq()
 	// Check/parse the HTTP Response
 	if err != nil {
 		if err != nil {
@@ -93,9 +97,35 @@ func Subscribe(cfg config.ConfigSubscribe, logger *logrus.Entry, location *time.
 				fmt.Errorf("error in building SOAP Subscribe request: %s", err)
 		}
 	}
-	_ = httpReq
-	_ = remoteErrorLoc
-	return SubscribeRequestInfoResult{}, httpReqBody, nil, nil
+
+	// Send HTTP request and receive the response
+	resp, err := siri.SoapCall(httpReq)
+	if err != nil {
+		return SubscribeRequestInfoResult{},
+			htmlReqBody,
+			nil,
+			&siri.RemoteError{Loc: remoteErrorLoc, Err: fmt.Errorf("call error: %s", err)}
+	}
+
+	// Get the HTTP response body
+	defer resp.Body.Close()
+	htmlRespBody, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return SubscribeRequestInfoResult{},
+			htmlReqBody,
+			nil,
+			&siri.RemoteError{Loc: remoteErrorLoc, Err: fmt.Errorf("unreadable response body: %s", err)}
+	}
+
+	// Check HTTP status code
+	if resp.StatusCode < 200 || resp.StatusCode > 299 {
+		return SubscribeRequestInfoResult{},
+			htmlReqBody,
+			htmlRespBody,
+			&siri.RemoteError{Loc: remoteErrorLoc, Err: fmt.Errorf("bad http-response status: %s", resp.Status)}
+	}
+
+	return SubscribeRequestInfoResult{}, htmlReqBody, htmlRespBody, nil
 }
 
 type SubscribeRequestInfo struct {
@@ -124,7 +154,7 @@ func (req *SubscribeRequestInfo) populate(
 	return nil
 }
 
-func (req *SubscribeRequestInfo) generateHttpSoapSubscribeReq() (*http.Request, string, error) {
+func (req *SubscribeRequestInfo) generateHttpSoapReq() (*http.Request, string, error) {
 	tmpl, err := template.ParseFiles("./template/subscription-request.tmpl")
 	if err != nil {
 		return nil, "", fmt.Errorf("error parsing template: %s", err)

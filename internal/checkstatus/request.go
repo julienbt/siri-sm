@@ -44,7 +44,7 @@ func CheckStatus(
 			nil,
 			fmt.Errorf("error CheckStatus request initialization: %v", err)
 	}
-	httpReq, htmlReqBody, err := generateHttpSoapReq(&req)
+	httpReq, htmlReqBody, err := req.generateHttpSoapReq()
 	if err != nil {
 		return CheckStatusResult{},
 			"",
@@ -71,7 +71,6 @@ func CheckStatus(
 			&siri.RemoteError{Loc: remoteErrorLoc, Err: fmt.Errorf("unreadable response body: %s", err)}
 	}
 
-	// Check HTTP status code
 	if resp.StatusCode < 200 || resp.StatusCode > 299 {
 		return CheckStatusResult{},
 			htmlReqBody,
@@ -114,7 +113,7 @@ func (req *CheckStatusRequest) populate(cfg *config.ConfigCheckStatus, requestTi
 	return nil
 }
 
-func generateHttpSoapReq(req *CheckStatusRequest) (*http.Request, string, error) {
+func (req *CheckStatusRequest) generateHttpSoapReq() (*http.Request, string, error) {
 	tmpl, err := template.ParseFiles("./template/checkstatus-request.tmpl")
 	if err != nil {
 		return nil, "", fmt.Errorf("error parsing template: %s", err)
