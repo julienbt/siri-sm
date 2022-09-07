@@ -18,7 +18,7 @@
         <ns5:ResponseStatus>
           <ns5:ResponseTimestamp>2022-08-30T04:34:46.522+02:00</ns5:ResponseTimestamp>
           <ns5:RequestMessageRef>SUBHOR_ILEVIA:StopPoint:BP:11N002:LOC</ns5:RequestMessageRef>
-          <ns5:SubscriberRef>KISIO2</ns5:SubscriberRef>
+          <ns5:SubscriberRef></ns5:SubscriberRef>
           <ns5:SubscriptionRef>SUBHOR_ILEVIA:StopPoint:BP:11N002:LOC</ns5:SubscriptionRef>
           <ns5:Status>true</ns5:Status>
           <ns5:ValidUntil>2022-08-31T02:15:00.000+02:00</ns5:ValidUntil>

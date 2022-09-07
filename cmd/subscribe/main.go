@@ -5,9 +5,9 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/julienbt/siri-sm/internal/common/ioutils"
 	"github.com/julienbt/siri-sm/internal/config"
 	"github.com/julienbt/siri-sm/internal/subscribe"
-	"github.com/julienbt/siri-sm/internal/utils"
 	"github.com/kelseyhightower/envconfig"
 	"github.com/sirupsen/logrus"
 )
@@ -35,7 +35,7 @@ func main() {
 		fmt.Println(htmlReqBody)
 	}
 	if htmlRespBody != nil {
-		fmt.Println(utils.GetPrettyPrintOfHtmlBody(htmlRespBody))
+		fmt.Println(ioutils.GetPrettyPrintOfHtmlBody(htmlRespBody))
 	}
 	if err != nil {
 		logger.Fatal(err)

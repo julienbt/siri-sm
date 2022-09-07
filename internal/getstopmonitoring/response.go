@@ -4,9 +4,9 @@ import (
 	"encoding/xml"
 	"fmt"
 	"strings"
-	"time"
 
-	"github.com/julienbt/siri-sm/internal/directionname"
+	"github.com/julienbt/siri-sm/internal/common/directionname"
+	siri_time "github.com/julienbt/siri-sm/internal/common/time"
 )
 
 type GetStopMonitoringEnv struct {
@@ -86,26 +86,8 @@ func (lr *LineRef) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 }
 
 type MonitoredCall struct {
-	XMLName               xml.Name     `xml:"MonitoredCall"`
-	StopPointRef          StopPointRef `xml:"StopPointRef"`
-	AimedDepartureTime    customTime   `xml:"AimedDepartureTime"`
-	ExpectedDepartureTime customTime   `xml:"ExpectedDepartureTime"`
-}
-
-type customTime time.Time
-
-func (ct *customTime) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
-	const CUSTUM_TIME_LAYOUT string = "2006-01-02T15:04:05.000Z07:00"
-	var s string
-	err := d.DecodeElement(&s, &start)
-	if err != nil {
-		return err
-	}
-
-	t, err := time.Parse(CUSTUM_TIME_LAYOUT, s)
-	if err != nil {
-		return err
-	}
-	*ct = customTime(t)
-	return nil
+	XMLName               xml.Name       `xml:"MonitoredCall"`
+	StopPointRef          StopPointRef   `xml:"StopPointRef"`
+	AimedDepartureTime    siri_time.Time `xml:"AimedDepartureTime"`
+	ExpectedDepartureTime siri_time.Time `xml:"ExpectedDepartureTime"`
 }
