@@ -92,14 +92,8 @@ func GetStopMonitoring(
 }
 
 func checkAndExtractMonitoredStopVisit(envelope *GetStopMonitoringEnv) ([]MonitoredStopVisit, error) {
-	const EXPECTED_NUMBER_OF_MONITORED_STOP_VISITS int = 1
 	const EXPECTED_NUMBER_OF_MONITORED_STOP_VISIT_CANCELLATIONS int = 0
 	stopMonitoringDelivery := envelope.StopMonitoringDelivery
-	if len(stopMonitoringDelivery.MonitoredStopVisits) !=
-		EXPECTED_NUMBER_OF_MONITORED_STOP_VISITS {
-		err := fmt.Errorf("invalid number of MonitoredStopVisit")
-		return nil, err
-	}
 	if len(stopMonitoringDelivery.MonitoredStopVisitCancellations) !=
 		EXPECTED_NUMBER_OF_MONITORED_STOP_VISIT_CANCELLATIONS {
 		err := fmt.Errorf("invalid number of MonitoredStopVisitCancellation")

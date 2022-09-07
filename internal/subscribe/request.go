@@ -169,7 +169,7 @@ func (req *SubscribeRequestInfo) generateHttpSoapReq() (*http.Request, string, e
 	httpReq, err := http.NewRequest(http.MethodPost, req.SupplierAddress.String(), strings.NewReader(httpReqBody))
 	headers := http.Header{
 		"Content-Type": []string{"text/xml; charset=utf-8"},
-		"SOAPAction":   []string{"Subscribe"},
+		// "SOAPAction":   []string{"Subscribe"},
 	}
 	httpReq.Header = headers // better than .Header.Set to preserve case (for "SOAPAction")
 	if err != nil {
@@ -208,6 +208,7 @@ func initSubscribeRequests(
 		req.RequestTimestamp = *requestTimestamp
 		req.MessageIdentifier = cfg.SubscriberRef + ":Message:" + requestTimestamp.Format(IDENTIFIER_TIME_LAYOUT)
 		req.MonitoringRef = cfg.ProducerRef + ":StopPoint:BP:" + stop_point_id + ":LOC"
+		req.StopVisitTypes = STOP_VISIT_TYPES
 		req.MinimumStopVisitsPerLine = MINIMUM_STOP_VISITS_PER_LINE
 		req.IncrementalUpdates = INCREMENTAL_UPDATES
 		req.ChangeBeforeUpdates = "PT1M"
