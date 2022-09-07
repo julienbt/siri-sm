@@ -30,7 +30,7 @@ const CHANGE_BEFORE_UPDATES_DURATION time.Duration = 2 * time.Second
 
 const IDENTIFIER_TIME_LAYOUT string = "20060102_150405"
 
-var STOP_POINT_IDS = []string{
+var STOP_POINT_IDS_LILLE_BUS = []string{
 	"CAS001",
 	// "CAS002",
 	// "CAT001",
@@ -74,6 +74,10 @@ var STOP_POINT_IDS = []string{
 	// "CEO001",
 	// "CEO002",
 	// "CER001",
+}
+
+var STOP_POINT_IDS_AMIENS = []string{
+	"RAMPO1",
 }
 
 func Subscribe(cfg config.ConfigSubscribe, logger *logrus.Entry, requestTimestamp *time.Time) (SubscribeRequestInfoResult, string, []byte, error) {
@@ -169,7 +173,7 @@ func (req *SubscribeRequestInfo) generateHttpSoapReq() (*http.Request, string, e
 	httpReq, err := http.NewRequest(http.MethodPost, req.SupplierAddress.String(), strings.NewReader(httpReqBody))
 	headers := http.Header{
 		"Content-Type": []string{"text/xml; charset=utf-8"},
-		// "SOAPAction":   []string{"Subscribe"},
+		"SOAPAction":   []string{"Subscribe"},
 	}
 	httpReq.Header = headers // better than .Header.Set to preserve case (for "SOAPAction")
 	if err != nil {
@@ -197,21 +201,21 @@ func initSubscribeRequests(
 	requestTimestamp *time.Time,
 	initialTerminationTime *time.Time,
 ) []SubscribeRequest {
-	numberOfSubascibeRequests := len(STOP_POINT_IDS)
+	numberOfSubascibeRequests := len(STOP_POINT_IDS_LILLE_BUS)
 	requests := make([]SubscribeRequest, 0, numberOfSubascibeRequests)
-	for _, stop_point_id := range STOP_POINT_IDS {
+	for _, stop_point_id := range STOP_POINT_IDS_LILLE_BUS {
 		req := SubscribeRequest{}
 		req.SubscriberRef = cfg.SubscriberRef
-		req.SubscriptionIdentifier = cfg.SubscriberRef + ":Subscription"
+		req.SubscriptionIdentifier = cfg.SubscriberRef + ":Subscription:" + "arret_" + stop_point_id + ":LOC"
 		req.InitialTerminationTime = requestTimestamp.AddDate(0, 0, 1)
-		req.PreviewInterval = "PT24H0M0.000S"
+		req.PreviewInterval = "PT2H0M0.000S"
 		req.RequestTimestamp = *requestTimestamp
 		req.MessageIdentifier = cfg.SubscriberRef + ":Message:" + requestTimestamp.Format(IDENTIFIER_TIME_LAYOUT)
 		req.MonitoringRef = cfg.ProducerRef + ":StopPoint:BP:" + stop_point_id + ":LOC"
 		req.StopVisitTypes = STOP_VISIT_TYPES
 		req.MinimumStopVisitsPerLine = MINIMUM_STOP_VISITS_PER_LINE
 		req.IncrementalUpdates = INCREMENTAL_UPDATES
-		req.ChangeBeforeUpdates = "PT1M"
+		req.ChangeBeforeUpdates = "PT0M30.000S"
 		requests = append(requests, req)
 	}
 	return requests
